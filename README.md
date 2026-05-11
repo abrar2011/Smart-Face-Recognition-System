@@ -10,12 +10,12 @@ The system contains 3 main parts, collecting, training, and finally the main rec
 You should have a folder structure like this:
 
 Project Folder
-|_collecting_faces.py
-|_training.py
-|_recognition.py
-|_dataset
-|__|_Authorized
-|__|_Threat
+├── collecting_faces.py
+├── training.py
+├── recognition.py
+└── dataset
+    ├── Authorized
+    └── Threat
 
 # collecting_faces.py:
 when you run the program, a window shows up showing live camera footage. In the terminal, you are asking to proved with the person's name and tag, (AUTHORIZED or THREAT). The system then automatically creates a folder with the person's name in the dataset folder (in dataset/Authorized or dataset/Threat depending on which role was provided). It takes 30 images of that person and saves it there.
