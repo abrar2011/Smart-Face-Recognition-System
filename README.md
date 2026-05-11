@@ -7,8 +7,8 @@ It suitable for multiple real-world applications such as attendance systems, bas
 The system contains 3 main parts, collecting, training, and finally the main recognition part. In Collecting stage, 30 imgaes of a person is taken. in training, the program is trained and finally and recognition, the trained porgram tries to match the person in front of the camera with collected images and determine who it is.
 
 # Project Structure:
-
-```Project Folder
+```
+Project Folder
 ├── collecting_faces.py
 ├── training.py
 ├── recognition.py
