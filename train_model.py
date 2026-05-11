@@ -2,7 +2,7 @@ import cv2 # library used for camera features
 import os # folder and file navigations
 import numpy as np # numerical data and arrays
 
-DATASET_PATH = r"C:\Users\abrar_l03\Desktop\Abrar\Science Fair 2026\Smart Face Recognition System\dataset" # defines the dataset path that contains all the faces
+DATASET_PATH = r"YOUR PATH GOES HERE" # defines the dataset path that contains all the faces
 
 recognizer = cv2.face.LBPHFaceRecognizer_create() # creates LBPH recognizer
 
