@@ -6,6 +6,17 @@ It suitable for multiple real-world applications such as attendance systems, bas
 
 The system contains 3 main parts, collecting, training, and finally the main recognition part. In Collecting stage, 30 imgaes of a person is taken. in training, the program is trained and finally and recognition, the trained porgram tries to match the person in front of the camera with collected images and determine who it is.
 
+# Setting up:
+You should have a folder structure like this:
+
+``Project Folder
+|_collecting_faces.py
+|_training.py
+|_recognition.py
+|_dataset
+|__|_Authorized
+|__|_Threat``
+
 # collecting_faces.py:
 when you run the program, a window shows up showing live camera footage. In the terminal, you are asking to proved with the person's name and tag, (AUTHORIZED or THREAT). The system then automatically creates a folder with the person's name in the dataset folder (in dataset/Authorized or dataset/Threat depending on which role was provided). It takes 30 images of that person and saves it there.
 
