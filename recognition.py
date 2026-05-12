@@ -8,7 +8,7 @@ import time
 # =========================
 arduino = None
 
-print("\System Starting...")
+print("System Starting...")
 
 try:
     arduino = serial.Serial('COM13', 9600)
