@@ -53,7 +53,7 @@ Download or clone the project folder from GitHub.
 Example using Git:
 
 ```bash
-git clone YOUR_GITHUB_LINK
+git clone https://github.com/abrar2011/Smart-Face-Recognition-System
 ```
 
 Or simply download the ZIP and extract it.
@@ -107,22 +107,6 @@ pip install opencv-contrib-python numpy pyserial
 
 ```bash
 pip install pillow
-```
-
----
-
-# 6. Project Structure
-
-```text
-Project Folder
-├── collecting_faces.py
-├── training.py
-├── recognition.py
-├── trainer.yml
-├── labels.npy
-└── dataset
-    ├── Authorized
-    └── Threat
 ```
 
 ---
