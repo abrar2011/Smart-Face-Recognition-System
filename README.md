@@ -111,6 +111,11 @@ pip install -r requirements.txt
 
 # Arduino Offline Demo Setup:
 
+## You need:
+
+* Arduino UNO
+* LCD Display (16 pin)
+
 ```
 LCD Pin 1  (VSS) → GND
 LCD Pin 2  (VDD) → 5V
