@@ -46,7 +46,7 @@ py --version
 
 ---
 
-# 2. Download the Project
+## 2. Download the Project
 
 Download or clone the project folder from GitHub.
 
@@ -60,7 +60,7 @@ Or simply download the ZIP and extract it.
 
 ---
 
-# 3. Open Project Folder
+## 3. Open Project Folder
 
 Open Command Prompt inside the project folder.
 
@@ -73,7 +73,7 @@ cd Smart-Face-Recognition-System
 
 ---
 
-# 4. Create Virtual Environment (Recommended)
+## 4. Create Virtual Environment
 
 ```bash
 python -m venv venv
@@ -95,7 +95,7 @@ in the terminal.
 
 ---
 
-# 5. Install Required Libraries
+## 5. Install Required Libraries
 
 Run:
 
@@ -103,9 +103,8 @@ Run:
 pip install -r requirements.txt
 ```
 
-# Notes
+## Notes
 
 * Webcam is required
-* Good lighting improves recognition accuracy
 * If no faces are detected, verify camera permissions
-* Re-train the model after adding new faces
+* Re-train the model every time after adding new faces
