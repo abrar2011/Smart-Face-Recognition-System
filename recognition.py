@@ -1,114 +1,198 @@
-import serial # imports library for Serial communication
-import cv2 # camera
-import numpy as np # numbers and arrays 
-import time # time library for delays
+import serial
+import cv2
+import numpy as np
+import time
 
+# =========================
+# SERIAL
+# =========================
 arduino = None
-send_enabled = False
+
+print("\System Starting...")
 
 try:
-    arduino = serial.Serial('COM11', 9600)
+    arduino = serial.Serial('COM13', 9600)
     time.sleep(2)
     print("Arduino connected")
+
 except:
     print("Arduino NOT connected (PC mode only)")
 
-recognizer = cv2.face.LBPHFaceRecognizer_create() # creates LBPH face recognizer
-recognizer.read("trainer.yml") # loads the trained model
 
-labels = np.load("labels.npy", allow_pickle=True).item() # loads lebels ie person names used in the trained model
+# =========================
+# FACE RECOGNIZER
+# =========================
+recognizer = cv2.face.LBPHFaceRecognizer_create()
+recognizer.read("trainer.yml")
 
+labels = np.load(
+    "labels.npy",
+    allow_pickle=True
+).item()
+
+
+# =========================
+# FACE DETECTOR
+# =========================
 face_cascade = cv2.CascadeClassifier(
-    cv2.data.haarcascades + "haarcascade_frontalface_default.xml" # loads Haard Cascade for detecting faces
+    cv2.data.haarcascades +
+    "haarcascade_frontalface_default.xml"
 )
 
-cam = cv2.VideoCapture(0) # default camera
+
+# =========================
+# CAMERA
+# =========================
+cam = cv2.VideoCapture(0)
 
 
-CONFIDENCE_THRESHOLD = 50 # confidence treshold, below that, faces will be considered UNKNOWN
+# =========================
+# SETTINGS
+# =========================
+CONFIDENCE_THRESHOLD = 50
 
+
+# =========================
+# LAST DETECTED PERSON
+# =========================
+current_role = "UNKNOWN"
+
+
+# =========================
+# MAIN LOOP
+# =========================
 while True:
 
-    ret, frame = cam.read() # continous images from camera creates live video
+    ret, frame = cam.read()
+
+    if not ret:
+        break
 
     # mirror webcam
     frame = cv2.flip(frame, 1)
 
-    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY) # converts to grayscale to make detection easier
+    # grayscale
+    gray = cv2.cvtColor(
+        frame,
+        cv2.COLOR_BGR2GRAY
+    )
 
-    faces = face_cascade.detectMultiScale(gray, 1.3, 5) # Haar Cascade searches for face and returns x, y, w and h
+    # detect faces
+    faces = face_cascade.detectMultiScale(
+        gray,
+        1.3,
+        5
+    )
 
-    for (x, y, w, h) in faces: # loops through each and every face found
+    # default if nobody detected
+    current_role = "UNKNOWN"
 
-        face = gray[y:y+h, x:x+w] # extracts only the face area
-        face = cv2.resize(face, (200, 200)) # resizes to the trained images size
+    # =========================
+    # LOOP THROUGH FACES
+    # =========================
+    for (x, y, w, h) in faces:
 
-        label_id, confidence = recognizer.predict(face)  # prediction part ising LBPH, returns confidence and lable_id, the name of the person it thinks it is
+        # crop face
+        face = gray[y:y+h, x:x+w]
 
-        # default UNKNOWN
+        # resize
+        face = cv2.resize(face, (200, 200))
+
+        # predict
+        label_id, confidence = recognizer.predict(face)
+
+        # defaults
         name = "Unknown"
-        role = "Unknown"
+        role = "UNKNOWN"
 
-        # yellow, default for unknown faces
+        # yellow
         color = (0, 255, 255)
 
-        # recognized properly
+        # =========================
+        # RECOGNIZED
+        # =========================
         if confidence < CONFIDENCE_THRESHOLD:
 
-            person_data = labels[label_id] # defines person_data to label_id
+            person_data = labels[label_id]
 
             name = person_data["name"]
             role = person_data["role"]
-            if arduino is not None:
-                arduino.write(b'UNKNOWN\n')
 
-            # Authorized = green
+            # AUTHORIZED
             if role.lower() == "authorized":
 
                 color = (0, 255, 0)
-                if arduino is not None:
-                    arduino.write(b'AUTHORIZED\n')
+                role = "AUTHORIZED"
 
-            # Threat = red 
+            # THREAT
             elif role.lower() == "threat":
 
                 color = (0, 0, 255)
-                if arduino is not None:
-                    arduino.write(b'THREAT\n')
+                role = "THREAT"
 
-        # rectangle
-        cv2.rectangle(frame,
-                      (x, y),
-                      (x+w, y+h),
-                      color,
-                      2) # puts rectangle around the face, using the defined color
+        # save current role
+        current_role = role
 
-        # text
+        # =========================
+        # DRAW RECTANGLE
+        # =========================
+        cv2.rectangle(
+            frame,
+            (x, y),
+            (x+w, y+h),
+            color,
+            2
+        )
+
+        # =========================
+        # DRAW TEXT
+        # =========================
         text = f"{name} - {role}"
 
-        cv2.putText(frame,
-                    text,
-                    (x, y-10),
-                    cv2.FONT_HERSHEY_SIMPLEX,
-                    0.8,
-                    color,
-                    2) # puts text over the face
-                    
+        cv2.putText(
+            frame,
+            text,
+            (x, y-10),
+            cv2.FONT_HERSHEY_SIMPLEX,
+            0.8,
+            color,
+            2
+        )
+
+    # =========================
+    # SHOW WINDOW
+    # =========================
+    cv2.imshow(
+        "Smart Face Recognition System",
+        frame
+    )
+
+    # =========================
+    # KEYBOARD CONTROLS
+    # =========================
     key = cv2.waitKey(1) & 0xFF
 
-    # press 's' to toggle sending ON/OFF
+    # PRESS S TO SEND ONCE
     if key == ord('s'):
-        send_enabled = not send_enabled
-        print("SEND MODE:", send_enabled)
 
-    # press 'q' to quit
+        if arduino is not None:
+
+            arduino.write(
+                (current_role + '\n').encode()
+            )
+
+            print("SENT:", current_role)
+
+        else:
+            print("Arduino not connected")
+
+    # PRESS Q TO QUIT
     if key == ord('q'):
-        break                
-
-    cv2.imshow("Smart Face Recognition System", frame)
-
-    if cv2.waitKey(1) & 0xFF == ord('q'): # if Q pressed in Keyboard, the program is stopped
         break
 
+
+# =========================
+# CLEANUP
+# =========================
 cam.release()
 cv2.destroyAllWindows()
