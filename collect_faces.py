@@ -4,9 +4,9 @@ import os
 import time
 
 # paths
-AUTHORIZED_PATH = r"YOUR PATH GOES HERE"
+AUTHORIZED_PATH = r"C:\Users\abrar_l03\Desktop\Abrar\Science Fair 2026\Smart Face Recognition System\dataset\Authorized"
 
-THREAT_PATH = r"YOUR PATH GOES HERE"
+THREAT_PATH = r"C:\Users\abrar_l03\Desktop\Abrar\Science Fair 2026\Smart Face Recognition System\dataset\Threat"
 
 # asks for name and role
 name = input("Enter person's name: ")
