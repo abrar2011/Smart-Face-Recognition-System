@@ -100,72 +100,8 @@ in the terminal.
 Run:
 
 ```bash
-pip install opencv-contrib-python numpy pyserial
+pip install -r requirements.txt
 ```
-
-(Optional UI support)
-
-```bash
-pip install pillow
-```
-
----
-
-# 7. Collect Face Data
-
-Run:
-
-```bash
-python collecting_faces.py
-```
-
-Follow the instructions to collect face images.
-
----
-
-# 8. Train the Model
-
-Run:
-
-```bash
-python training.py
-```
-
-This creates:
-
-* trainer.yml
-* labels.npy
-
----
-
-# 9. Start Recognition System
-
-Run:
-
-```bash
-python recognition.py
-```
-
-Controls:
-
-* Press `S` → Send current detection to Arduino
-* Press `Q` → Quit program
-
----
-
-# 10. Arduino Connection (Optional)
-
-Make sure Arduino is connected to the correct COM port.
-
-Example:
-
-```python
-arduino = serial.Serial('COM11', 9600)
-```
-
-Change COM port if needed.
-
----
 
 # Notes
 
