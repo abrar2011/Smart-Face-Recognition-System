@@ -108,3 +108,24 @@ pip install -r requirements.txt
 * Webcam is required
 * If no faces are detected, verify camera permissions
 * Re-train the model every time after adding new faces
+
+# Arduino Offline Demo Setup:
+
+```
+LCD Pin 1  (VSS) → GND
+LCD Pin 2  (VDD) → 5V
+LCD Pin 3  (VO)  → Middle pin of potentiometer
+
+LCD Pin 4  (RS)  → D12
+LCD Pin 5  (RW)  → GND
+LCD Pin 6  (E)   → D11
+
+LCD Pin 11 (D4)  → D5
+LCD Pin 12 (D5)  → D4
+LCD Pin 13 (D6)  → D3
+LCD Pin 14 (D7)  → D2
+
+LCD Pin 15 (A)   → 5V (backlight +)
+LCD Pin 16 (K)   → GND (backlight -)
+```
+
