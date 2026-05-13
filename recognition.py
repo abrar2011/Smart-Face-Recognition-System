@@ -2,6 +2,7 @@ import serial
 import cv2
 import numpy as np
 import time
+from datetime import datetime
 
 # =========================
 # SERIAL
@@ -53,9 +54,12 @@ CONFIDENCE_THRESHOLD = 50
 
 
 # =========================
-# LAST DETECTED PERSON
+# STATUS
 # =========================
 current_role = "UNKNOWN"
+
+prev_time = 0
+fps = 0
 
 
 # =========================
@@ -64,53 +68,43 @@ current_role = "UNKNOWN"
 while True:
 
     ret, frame = cam.read()
-
     if not ret:
         break
 
-    # mirror webcam
     frame = cv2.flip(frame, 1)
 
+    # =========================
+    # FPS CALCULATION
+    # =========================
+    current_time = time.time()
+    fps = 1 / (current_time - prev_time) if prev_time != 0 else 0
+    prev_time = current_time
+
+    # timestamp
+    timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+
     # grayscale
-    gray = cv2.cvtColor(
-        frame,
-        cv2.COLOR_BGR2GRAY
-    )
+    gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
 
     # detect faces
-    faces = face_cascade.detectMultiScale(
-        gray,
-        1.3,
-        5
-    )
+    faces = face_cascade.detectMultiScale(gray, 1.3, 5)
 
-    # default if nobody detected
     current_role = "UNKNOWN"
 
     # =========================
-    # LOOP THROUGH FACES
+    # FACE LOOP
     # =========================
     for (x, y, w, h) in faces:
 
-        # crop face
         face = gray[y:y+h, x:x+w]
-
-        # resize
         face = cv2.resize(face, (200, 200))
 
-        # predict
         label_id, confidence = recognizer.predict(face)
 
-        # defaults
         name = "Unknown"
         role = "UNKNOWN"
-
-        # yellow
         color = (0, 255, 255)
 
-        # =========================
-        # RECOGNIZED
-        # =========================
         if confidence < CONFIDENCE_THRESHOLD:
 
             person_data = labels[label_id]
@@ -118,75 +112,87 @@ while True:
             name = person_data["name"]
             role = person_data["role"]
 
-            # AUTHORIZED
             if role.lower() == "authorized":
-
-                color = (0, 255, 0)
                 role = "AUTHORIZED"
+                color = (0, 255, 0)
 
-            # THREAT
             elif role.lower() == "threat":
-
-                color = (0, 0, 255)
                 role = "THREAT"
+                color = (0, 0, 255)
 
-        # save current role
         current_role = role
 
-        # =========================
-        # DRAW RECTANGLE
-        # =========================
-        cv2.rectangle(
-            frame,
-            (x, y),
-            (x+w, y+h),
-            color,
-            2
-        )
-
-        # =========================
-        # DRAW TEXT
-        # =========================
-        text = f"{name} - {role}"
+        cv2.rectangle(frame, (x, y), (x+w, y+h), color, 2)
 
         cv2.putText(
             frame,
-            text,
+            f"{name} - {role}",
             (x, y-10),
             cv2.FONT_HERSHEY_SIMPLEX,
-            0.8,
+            0.7,
             color,
             2
         )
+
+    # =========================
+    # TOP STATUS BAR
+    # =========================
+    status_color = (0, 255, 255)
+
+    if current_role == "AUTHORIZED":
+        status_color = (0, 255, 0)
+
+    elif current_role == "THREAT":
+        status_color = (0, 0, 255)
+
+    # dark bar
+    cv2.rectangle(frame, (0, 0), (800, 40), (30, 30, 30), -1)
+
+    cv2.putText(frame, f"Time: {timestamp}",
+                (10, 25),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                (255, 255, 255),
+                1)
+
+    cv2.putText(frame, f"FPS: {int(fps)}",
+                (300, 25),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.5,
+                (255, 255, 255),
+                1)
+
+    cv2.putText(frame, f"STATUS: {current_role}",
+                (450, 25),
+                cv2.FONT_HERSHEY_SIMPLEX,
+                0.6,
+                status_color,
+                2)
 
     # =========================
     # SHOW WINDOW
     # =========================
-    cv2.imshow(
-        "Smart Face Recognition System",
-        frame
-    )
+    cv2.imshow("Smart Face Recognition System", frame)
 
     # =========================
     # KEYBOARD CONTROLS
     # =========================
     key = cv2.waitKey(1) & 0xFF
 
-    # PRESS S TO SEND ONCE
+    # send once
     if key == ord('s'):
 
         if arduino is not None:
-
-            arduino.write(
-                (current_role + '\n').encode()
-            )
-
-            print("SENT:", current_role)
+            try:
+                arduino.write((current_role + '\n').encode())
+                print("SENT:", current_role)
+            except Exception as e:
+                print("Serial error:", e)
 
         else:
             print("Arduino not connected")
 
-    # PRESS Q TO QUIT
+    # quit
     if key == ord('q'):
         break
 
