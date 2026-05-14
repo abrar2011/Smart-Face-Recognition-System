@@ -57,6 +57,7 @@ CONFIDENCE_THRESHOLD = 50
 # STATUS
 # =========================
 current_role = "UNKNOWN"
+default = "Reset"
 
 prev_time = 0
 fps = 0
@@ -191,6 +192,11 @@ while True:
 
         else:
             print("Arduino not connected")
+            
+    # reset LCD 
+    if key == ord('r'):
+        arduino.write((default + '\n').encode())
+        print ("Reset")
 
     # quit
     if key == ord('q'):
