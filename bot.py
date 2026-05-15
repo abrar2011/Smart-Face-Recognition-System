@@ -7,8 +7,8 @@ import asyncio
 
 TOKEN = "BotTokenHere"
 
-# channes in my server, change them
-LOG_CHANNEL = 1504508733839900855 
+# My Channel IDs, you need to change them
+LOG_CHANNEL = 1504508733839900855
 ALERT_CHANNEL = 1504508750155747642
 VERIFY_CHANNEL = 1504522183609946193
 
@@ -46,7 +46,11 @@ def receive_event():
 
     elif event_type == "unknown":
         run_async(send_unknown(message))
-
+    
+    elif event_type == "manual_verification":
+        print("→ MANUAL VERIFICATION")
+        run_async(send_unknown(message))
+            
     return "OK"
 
 
@@ -68,7 +72,7 @@ async def on_ready():
 
     try:
         synced = await bot.tree.sync(
-            guild=discord.Object(id=1504508435654377632) # my server ID, change it
+            guild=discord.Object(id=1504508435654377632) # my server ID, change
         )
         print("Synced:", len(synced))
 
@@ -77,7 +81,7 @@ async def on_ready():
 
 
 # ======================
-# LOG FUNCTION
+# LOG FUNCTION 
 # ======================
 async def send_log(text):
 
@@ -92,25 +96,26 @@ async def send_log(text):
     await channel.send(embed=embed)
 
 
-# ======================
-# ALERT FUNCTION
-# ======================
+# ======================================================
+# ALERT FUNCTION (PINGING A ROLE IN MY CHANNEL, CHANGE)
+# ======================================================
 async def send_alert(text):
 
     channel = bot.get_channel(ALERT_CHANNEL)
+
 
     embed = discord.Embed(
         title="🚨 THREAT ALERT",
         description=text,
         color=discord.Color.red()
     )
+    
+    await channel.send("<@&1504722323117178962>", embed=embed)
 
-    await channel.send("@everyone", embed=embed)
 
-
-# ======================
-# UNKNOWN FUNCTION
-# ======================
+# =======================================================
+# UNKNOWN FUNCTION (PINGING A ROLE IN MY CHANNEL, CHANGE)
+# =======================================================
 async def send_unknown(text):
 
     channel = bot.get_channel(VERIFY_CHANNEL)
@@ -121,7 +126,7 @@ async def send_unknown(text):
         color=discord.Color.orange()
     )
 
-    await channel.send(embed=embed)
+    await channel.send("<@&1504722323117178962>", embed=embed)
 
 
 bot.run(TOKEN)
