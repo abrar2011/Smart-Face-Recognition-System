@@ -3,9 +3,29 @@ import cv2
 import numpy as np
 import time
 from datetime import datetime
+import requests
 
 # =========================
-# SERIAL
+# FLASK SEND FUNCTION
+# =========================
+def send_event(event_type, message):
+
+    print("SENDING →", event_type, message)
+
+    try:
+        requests.post(
+            "http://127.0.0.1:5000/event",
+            json={
+                "type": event_type,
+                "message": message
+            }
+        )
+    except Exception as e:
+        print("Flask send error:", e)
+
+
+# =========================
+# SERIAL (ARDUINO)
 # =========================
 arduino = None
 
@@ -26,10 +46,7 @@ except:
 recognizer = cv2.face.LBPHFaceRecognizer_create()
 recognizer.read("trainer.yml")
 
-labels = np.load(
-    "labels.npy",
-    allow_pickle=True
-).item()
+labels = np.load("labels.npy", allow_pickle=True).item()
 
 
 # =========================
@@ -52,15 +69,9 @@ cam = cv2.VideoCapture(0)
 # =========================
 CONFIDENCE_THRESHOLD = 50
 
-
-# =========================
-# STATUS
-# =========================
-current_role = "UNKNOWN"
-default = "Reset"
-
-prev_time = 0
-fps = 0
+# prevent spam
+last_sent = 0
+cooldown = 2  # seconds
 
 
 # =========================
@@ -74,23 +85,13 @@ while True:
 
     frame = cv2.flip(frame, 1)
 
-    # =========================
-    # FPS CALCULATION
-    # =========================
-    current_time = time.time()
-    fps = 1 / (current_time - prev_time) if prev_time != 0 else 0
-    prev_time = current_time
-
-    # timestamp
     timestamp = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
 
-    # grayscale
     gray = cv2.cvtColor(frame, cv2.COLOR_BGR2GRAY)
-
-    # detect faces
     faces = face_cascade.detectMultiScale(gray, 1.3, 5)
 
     current_role = "UNKNOWN"
+    name = "Unknown"
 
     # =========================
     # FACE LOOP
@@ -102,7 +103,6 @@ while True:
 
         label_id, confidence = recognizer.predict(face)
 
-        name = "Unknown"
         role = "UNKNOWN"
         color = (0, 255, 255)
 
@@ -136,69 +136,89 @@ while True:
         )
 
     # =========================
-    # TOP STATUS BAR
+    # TOP BAR
     # =========================
-    status_color = (0, 255, 255)
-
-    if current_role == "AUTHORIZED":
-        status_color = (0, 255, 0)
-
-    elif current_role == "THREAT":
-        status_color = (0, 0, 255)
-
-    # dark bar
     cv2.rectangle(frame, (0, 0), (800, 40), (30, 30, 30), -1)
 
     cv2.putText(frame, f"Time: {timestamp}",
                 (10, 25),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.5,
-                (255, 255, 255),
-                1)
-
-    cv2.putText(frame, f"FPS: {int(fps)}",
-                (300, 25),
-                cv2.FONT_HERSHEY_SIMPLEX,
-                0.5,
-                (255, 255, 255),
-                1)
+                (255, 255, 255), 1)
 
     cv2.putText(frame, f"STATUS: {current_role}",
                 (450, 25),
                 cv2.FONT_HERSHEY_SIMPLEX,
                 0.6,
-                status_color,
+                (0, 255, 0) if current_role == "AUTHORIZED"
+                else (0, 0, 255) if current_role == "THREAT"
+                else (0, 255, 255),
                 2)
 
-    # =========================
-    # SHOW WINDOW
-    # =========================
     cv2.imshow("Smart Face Recognition System", frame)
 
     # =========================
-    # KEYBOARD CONTROLS
+    # KEY INPUT
     # =========================
     key = cv2.waitKey(1) & 0xFF
 
-    # send once
+    # SEND ON S PRESS
     if key == ord('s'):
 
-        if arduino is not None:
-            try:
-                arduino.write((current_role + '\n').encode())
-                print("SENT:", current_role)
-            except Exception as e:
-                print("Serial error:", e)
+        now = time.time()
 
-        else:
-            print("Arduino not connected")
+        if now - last_sent > cooldown:
+
+            last_sent = now
+
+            print("SEND TRIGGERED")
+
+            # =========================
+            # LOGS
+            # =========================
+            send_event(
+                "log",
+                f"{name} detected as {current_role} at {timestamp}"
+            )
+
+            # =========================
+            # ALERT
+            # =========================
+            if current_role == "THREAT":
+                send_event(
+                    "alert",
+                    f"🚨 THREAT: {name} detected at {timestamp}"
+                )
+                
+                
+            # =========================
+            # UNKNOWN PERSON
+            # =========================
+            if current_role == "UNKNOWN":
+
+                state = input("Do you want to inform the home owner? (Y/N): ")
+
+                if state.upper() == 'Y':
+
+                    send_event( "manual_verification", f"UNKNOWN person detected at {timestamp}")
+
             
-    # reset LCD 
-    if key == ord('r'):
-        arduino.write((default + '\n').encode())
-        print ("Reset")
+            # =========================
+            # ARDUINO
+            # =========================
+            if arduino is not None:
+                try:
+                    arduino.write((current_role + '\n').encode())
+                except Exception as e:
+                    print("Serial error:", e)
 
-    # quit
+    # RESET
+    if key == ord('r'):
+        if arduino:
+            arduino.write(("Reset\n").encode())
+        print("RESET")
+
+    # QUIT
     if key == ord('q'):
         break
 
