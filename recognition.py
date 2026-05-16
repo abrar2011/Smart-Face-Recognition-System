@@ -1,43 +1,28 @@
-import serial
 import cv2
 import numpy as np
 import time
 from datetime import datetime
 import requests
+import os
 
 # =========================
 # FLASK SEND FUNCTION
 # =========================
-def send_event(event_type, message):
+def send_event(event_type, data):
 
-    print("SENDING →", event_type, message)
+    print("SENDING →", event_type, data)
 
     try:
         requests.post(
             "http://127.0.0.1:5000/event",
             json={
                 "type": event_type,
-                "message": message
-            }
+                "data": data
+            },
         )
     except Exception as e:
         print("Flask send error:", e)
 
-
-# =========================
-# SERIAL (ARDUINO)
-# =========================
-arduino = None
-
-print("System Starting...")
-
-try:
-    arduino = serial.Serial('COM13', 9600)
-    time.sleep(2)
-    print("Arduino connected")
-
-except:
-    print("Arduino NOT connected (PC mode only)")
 
 
 # =========================
@@ -68,10 +53,13 @@ cam = cv2.VideoCapture(0)
 # SETTINGS
 # =========================
 CONFIDENCE_THRESHOLD = 50
-
-# prevent spam
 last_sent = 0
 cooldown = 2  # seconds
+
+# =========================
+# SAVE FOLDER
+# =========================
+os.makedirs("snapshots", exist_ok=True)
 
 
 # =========================
@@ -94,7 +82,7 @@ while True:
     name = "Unknown"
 
     # =========================
-    # FACE LOOP
+    # FACE DETECTION
     # =========================
     for (x, y, w, h) in faces:
 
@@ -136,7 +124,7 @@ while True:
         )
 
     # =========================
-    # TOP BAR
+    # UI BAR
     # =========================
     cv2.rectangle(frame, (0, 0), (800, 40), (30, 30, 30), -1)
 
@@ -162,65 +150,80 @@ while True:
     # =========================
     key = cv2.waitKey(1) & 0xFF
 
-    # SEND ON S PRESS
     if key == ord('s'):
 
         now = time.time()
+        if now - last_sent < cooldown:
+            continue
 
-        if now - last_sent > cooldown:
+        last_sent = now
+        print("SEND TRIGGERED")
 
-            last_sent = now
+        image_path = None
 
-            print("SEND TRIGGERED")
+        # =========================
+        # SAVE IMAGE ONLY FOR THREAT / UNKNOWN
+        # =========================
+        if current_role in ["THREAT", "UNKNOWN"]:
+            image_path = f"snapshots/{int(time.time())}.jpg"
+            cv2.imwrite(image_path, frame)
+            print("IMAGE SAVED:", image_path)
 
-            # =========================
-            # LOGS
-            # =========================
+        # =========================
+        # LOG EVENT (ALWAYS)
+        # =========================
+        send_event(
+            "log",
+            {
+                "message": f"{name} detected as {current_role} at {timestamp}"
+            }
+        )
+        
+        send_event(
+            "log",
+            {
+                "log": f"{current_role}"
+            }
+        )
+
+        # =========================
+        # THREAT ALERT
+        # =========================
+        if current_role == "THREAT":
             send_event(
-                "log",
-                f"{name} detected as {current_role} at {timestamp}"
+                "alert",
+                {
+                    "message": f"🚨 THREAT: {name} detected at {timestamp}",
+                    "image": image_path
+                }
             )
 
-            # =========================
-            # ALERT
-            # =========================
-            if current_role == "THREAT":
-                send_event(
-                    "alert",
-                    f"🚨 THREAT: {name} detected at {timestamp}"
-                )
-                
-                
-            # =========================
-            # UNKNOWN PERSON
-            # =========================
-            if current_role == "UNKNOWN":
+        # =========================
+        # UNKNOWN PERSON
+        # =========================
+        elif current_role == "UNKNOWN":
 
-                state = input("Do you want to inform the home owner? (Y/N): ")
+            print("UNKNOWN detected")
 
-                if state.upper() == 'Y':
-
-                    send_event( "manual_verification", f"UNKNOWN person detected at {timestamp}")
-
-            
-            # =========================
-            # ARDUINO
-            # =========================
-            if arduino is not None:
-                try:
-                    arduino.write((current_role + '\n').encode())
-                except Exception as e:
-                    print("Serial error:", e)
+            send_event(
+                "manual_verification",
+                {
+                    "message": f"UNKNOWN person detected at {timestamp}",
+                    "image": image_path
+                }
+            )
 
     # RESET
     if key == ord('r'):
-        if arduino:
-            arduino.write(("Reset\n").encode())
-        print("RESET")
 
-    # QUIT
-    if key == ord('q'):
-        break
+        send_event(
+            "reset",
+        {
+            "message": "System Reset"
+        }
+    )
+
+        print("RESET")
 
 
 # =========================
