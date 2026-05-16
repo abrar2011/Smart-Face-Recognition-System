@@ -22,7 +22,7 @@ app = Flask(__name__)
 arduino = None
 
 try:
-    arduino = serial.Serial('COM4', 9600)
+    arduino = serial.Serial('COM13', 9600)
     time.sleep(2)
     print("Arduino connected")
 
@@ -88,7 +88,7 @@ def receive_event():
         image = payload.get("image", None)
 
         # ======================
-        # LOGS
+        # AUTHORIZED / LOG
         # ======================
         if event_type == "log":
 
@@ -98,10 +98,10 @@ def receive_event():
                 send_arduino("AUTHORIZED")
 
             elif "THREAT" in message:
-                send_arduino("THREAT")
+                send_arduino("THREAT")    
 
         # ======================
-        # THREAT ALERT
+        # THREAT
         # ======================
         elif event_type == "alert":
 
@@ -116,11 +116,11 @@ def receive_event():
         # ======================
         elif event_type == "manual_verification":
 
-            send_arduino("WAITING")
-
             run_async(
                 send_unknown(message, image)
             )
+            send_arduino("WAITING")
+            
 
         # ======================
         # RESET
@@ -135,7 +135,7 @@ def receive_event():
     return "OK", 200
 
 
-# ======================
+# ======================-
 # START FLASK
 # ======================
 def run_flask():
@@ -219,6 +219,8 @@ class VerifyView(discord.ui.View):
             "✅ ACCESS GRANTED",
             ephemeral=True
         )
+
+
 
     @discord.ui.button(
         label="DENY",
