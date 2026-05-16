@@ -224,6 +224,11 @@ while True:
     )
 
         print("RESET")
+        
+
+    if key == ord('q'):
+        cam.release()
+        cv2.destroyAllWindows()
 
 
 # =========================
