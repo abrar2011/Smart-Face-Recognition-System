@@ -18,7 +18,7 @@ byte smiley[8] = {
   B00000
 };
 
-// Warning ⚠️ (simple triangle)
+// Warning ⚠ (simple triangle)
 byte warning[8] = {
   B00100,
   B01110,
@@ -132,20 +132,48 @@ void loop() {
     else if (msg == "Reset") {
 
       lcd.setCursor(0,0);
-      lcd.print("System Ready")
+      lcd.print("System Ready");
     }
 
     // =========================
     // UNKNOWN
     // =========================
-    else {
+    else if (msg == "WAITING"){
 
       lcd.setCursor(0, 0);
-      lcd.write(byte(2)); // question mark
+      lcd.write(byte(2)); 
       lcd.print(" UNKNOWN");
 
       lcd.setCursor(0, 1);
-      lcd.print(" ACCESS DENIED");
+      lcd.print(" WAITING...");
     }
+
+    // ==========================
+    // ALLOW
+    // ==========================
+    else if (msg == "ALLOW") {
+      lcd.setCursor(0, 0);
+      lcd.write(byte(0)); 
+      lcd.print(" ALLOWED");
+
+      lcd.setCursor(0, 1);
+      lcd.print(" UNLOCKED");
+      
+    }
+
+    
+    // ==========================
+    // DENY
+    // ==========================
+    else if (msg == "DENY") {
+      lcd.setCursor(0, 0);
+      lcd.write(byte(8)); 
+      lcd.print(" DENIED");
+
+      lcd.setCursor(0, 1);
+      lcd.print(" LOCKED");
+      
+    }
+    
   }
 }
