@@ -87,7 +87,7 @@ venv\Scripts\activate
 
 You should now see:
 
-```bash
+```
 (venv)
 ```
 
@@ -99,7 +99,7 @@ in the terminal.
 
 Run:
 
-```bash
+```
 pip install -r requirements.txt
 ```
 
@@ -109,12 +109,13 @@ pip install -r requirements.txt
 * If no faces are detected, verify camera permissions
 * Re-train the model every time after adding new faces
 
-# Arduino Offline Demo Setup:
+# Arduino Demo Setup:
 
 ## You need:
 
 * Arduino UNO
-* LCD Display (16 pin)
+* LCD Display (I2C or connected to I2C adapter)
+* Servo motor (To open or close the door)
 
 ```
 LCD Pin 1  (VSS) → GND
