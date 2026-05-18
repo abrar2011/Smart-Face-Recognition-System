@@ -1,4 +1,0 @@
-LiquidCrystal_I2C
-Keypad
-Servo (built-in)
-Wire (built-in)
