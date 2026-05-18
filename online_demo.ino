@@ -174,7 +174,7 @@ void loop() {
       lcd.print(" UNKNOWN");
 
       lcd.setCursor(0, 1);
-      lcd.print("WAIT APPROVAL");
+      lcd.print("WAIT...");
     }
 
     // =========================
@@ -217,10 +217,11 @@ void loop() {
       doorServo.write(0);
 
       lcd.setCursor(0, 0);
-      lcd.print("System Ready");
+      lcd.print("ed
+      ");
 
       lcd.setCursor(0, 1);
-      lcd.print("Waiting...");
+      lcd.print("Alaikum");
     }
 
     // =========================
