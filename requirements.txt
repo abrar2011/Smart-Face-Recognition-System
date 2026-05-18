@@ -1,5 +1,7 @@
-opencv-contrib-python
-numpy
 pyserial
-pillow
+flask
+requests
 discord.py
+numpy
+opencv-python
+opencv-contrib-python
