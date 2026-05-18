@@ -1,12 +1,11 @@
-# imports OpenCV for camera usage, OS for creating folders and Time for the delays
 import cv2
 import os
 import time
 
 # paths
-AUTHORIZED_PATH = r"C:\Users\abrar_l03\Desktop\Abrar\Science Fair 2026\Smart Face Recognition System\dataset\Authorized"
+AUTHORIZED_PATH = r"AuthorizedFolderPathHere"
 
-THREAT_PATH = r"C:\Users\abrar_l03\Desktop\Abrar\Science Fair 2026\Smart Face Recognition System\dataset\Threat"
+THREAT_PATH = r"ThreatFolderPathHere"
 
 # asks for name and role
 name = input("Enter person's name: ")
