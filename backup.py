@@ -10,11 +10,12 @@ from datetime import datetime
 # =========================
 # CONFIG
 # =========================
-TOKEN = "BotTokenHere"
+TOKEN = "YOUR_TOKEN_HERE"
 CHANNEL_ID = 1504508719713484890
+ROLE_PING = "<@&1504722323117178962>"
 
 # =========================
-# DISCORD BOT
+# BOT
 # =========================
 intents = discord.Intents.default()
 bot = commands.Bot(command_prefix="!", intents=intents)
@@ -33,7 +34,7 @@ cam = cv2.VideoCapture(0)
 running = True
 
 # =========================
-# DISCORD SAFE SENDER
+# SAFE DISCORD SEND
 # =========================
 def send_discord(message, file_path=None):
     channel = bot.get_channel(CHANNEL_ID)
@@ -48,7 +49,7 @@ def send_discord(message, file_path=None):
     asyncio.run_coroutine_threadsafe(task(), bot.loop)
 
 # =========================
-# ARDUINO SEND
+# ARDUINO
 # =========================
 def send_arduino(cmd):
     try:
@@ -70,17 +71,81 @@ def take_photo():
     return path
 
 # =========================
-# SERIAL LISTENER
+# DISCORD VIEW (BUTTONS)
+# =========================
+class AccessView(discord.ui.View):
+
+    def __init__(self, image_path):
+        super().__init__(timeout=60)
+        self.image_path = image_path
+
+    @discord.ui.button(label="ALLOW", style=discord.ButtonStyle.green)
+    async def allow(self, interaction: discord.Interaction, button: discord.ui.Button):
+
+        send_arduino("ALLOW")
+
+        await interaction.response.send_message(
+            "✅ Access Granted",
+            ephemeral=True
+        )
+
+        # optional: update message
+        await interaction.message.edit(content="✅ ACCESS GRANTED (APPROVED)")
+
+    @discord.ui.button(label="DENY", style=discord.ButtonStyle.red)
+    async def deny(self, interaction: discord.Interaction, button: discord.ui.Button):
+
+        send_arduino("DENY")
+
+        await interaction.response.send_message(
+            "❌ Access Denied",
+            ephemeral=True
+        )
+
+        await interaction.message.edit(content="❌ ACCESS DENIED")
+
+# =========================
+# SEND REQUEST TO DISCORD
+# =========================
+def send_access_request(image_path):
+
+    channel = bot.get_channel(CHANNEL_ID)
+
+    async def task():
+
+        embed = discord.Embed(
+            title="🚪 ACCESS REQUEST RECEIVED",
+            description="Unknown user detected. Choose action below:",
+            color=discord.Color.orange()
+        )
+
+        file = discord.File(image_path)
+
+        view = AccessView(image_path)
+
+        await channel.send(
+            ROLE_PING,
+            embed=embed,
+            file=file,
+            view=view
+        )
+
+    asyncio.run_coroutine_threadsafe(task(), bot.loop)
+
+# =========================
+# SERIAL THREAD
 # =========================
 def read_serial():
+
     while running:
+
         if arduino.in_waiting:
             msg = arduino.readline().decode().strip()
             print("Arduino:", msg)
 
             if msg == "A_PRESSED":
                 img = take_photo()
-                send_discord("🚪 Access Request", img)
+                send_access_request(img)
 
             elif msg == "ALLOW":
                 send_discord("✅ Access Granted")
@@ -91,19 +156,20 @@ def read_serial():
                 send_arduino("LOCK")
 
 # =========================
-# CAMERA WINDOW
+# CAMERA LOOP
 # =========================
 def camera_loop():
+
     global running
 
     while running:
+
         ret, frame = cam.read()
         if not ret:
             continue
 
         frame = cv2.flip(frame, 1)
 
-        # ================= UI BAR =================
         cv2.rectangle(frame, (0, 0), (800, 40), (30, 30, 30), -1)
 
         time_text = datetime.now().strftime("%H:%M:%S")
@@ -113,7 +179,7 @@ def camera_loop():
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.6, (255, 255, 255), 1)
 
-        cv2.putText(frame, "BACKUP SECURITY SYSTEM",
+        cv2.putText(frame, "SECURITY SYSTEM",
                     (250, 25),
                     cv2.FONT_HERSHEY_SIMPLEX,
                     0.6, (0, 255, 255), 2)
@@ -122,29 +188,23 @@ def camera_loop():
 
         key = cv2.waitKey(1) & 0xFF
 
-        # ================= QUIT =================
         if key == ord('q'):
             running = False
             break
 
-        # ================= RESET =================
         elif key == ord('r'):
             send_arduino("Reset")
             print("RESET SENT")
 
     cam.release()
     cv2.destroyAllWindows()
-    print("Camera stopped")
 
 # =========================
-# START THREADS
+# THREAD START
 # =========================
 def start_threads():
-    t1 = threading.Thread(target=read_serial, daemon=True)
-    t2 = threading.Thread(target=camera_loop, daemon=True)
-
-    t1.start()
-    t2.start()
+    threading.Thread(target=read_serial, daemon=True).start()
+    threading.Thread(target=camera_loop, daemon=True).start()
 
 # =========================
 # BOT READY
