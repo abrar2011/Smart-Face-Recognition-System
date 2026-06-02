@@ -1,16 +1,46 @@
-#include <Wire.h>
+#include <Keypad.h>
 #include <LiquidCrystal_I2C.h>
+#include <Wire.h>
 #include <Servo.h>
 
 LiquidCrystal_I2C lcd(0x27, 16, 2);
-
 Servo doorServo;
 
 // =========================
-// CUSTOM CHARACTERS
+// PASSWORD
 // =========================
+String enteredPassword = "";
+String correct_pwd = "695";
 
-// 🙂 Smiley
+bool enteringPassword = false;
+
+// =========================
+// KEYPAD
+// =========================
+const byte ROWS = 4;
+const byte COLS = 4;
+
+char keys[ROWS][COLS] = {
+  {'1','2','3','A'},
+  {'4','5','6','B'},
+  {'7','8','9','C'},
+  {'*','0','#','D'}
+};
+
+byte rowPins[ROWS] = {2, 3, 4, 5};
+byte colPins[COLS] = {6, 7, 8, 10};
+
+Keypad keypad = Keypad(
+  makeKeymap(keys),
+  rowPins,
+  colPins,
+  ROWS,
+  COLS
+);
+
+// =========================
+// CUSTOM CHARS
+// =========================
 byte smiley[8] = {
   B00000,
   B01010,
@@ -22,7 +52,6 @@ byte smiley[8] = {
   B00000
 };
 
-// ⚠ Warning
 byte warning[8] = {
   B00100,
   B01110,
@@ -34,7 +63,6 @@ byte warning[8] = {
   B00100
 };
 
-// ❓ Question
 byte question[8] = {
   B01110,
   B10001,
@@ -46,7 +74,6 @@ byte question[8] = {
   B00000
 };
 
-// 🔒 Lock Closed
 byte lockClosed[8] = {
   B01110,
   B10001,
@@ -58,7 +85,6 @@ byte lockClosed[8] = {
   B00000
 };
 
-// 🔓 Lock Open
 byte lockOpen[8] = {
   B01110,
   B10000,
@@ -70,7 +96,6 @@ byte lockOpen[8] = {
   B00000
 };
 
-// ❌ Denied
 byte deniedIcon[8] = {
   B10001,
   B01010,
@@ -83,6 +108,20 @@ byte deniedIcon[8] = {
 };
 
 // =========================
+// HOME SCREEN
+// =========================
+void showHome() {
+
+  lcd.clear();
+
+  lcd.setCursor(0,0);
+  lcd.print("Assalamu Alaikum");
+
+  lcd.setCursor(0,1);
+  lcd.print("B=Password");
+}
+
+// =========================
 // SETUP
 // =========================
 void setup() {
@@ -92,13 +131,12 @@ void setup() {
   lcd.init();
   lcd.backlight();
 
-  // Servo
   doorServo.attach(9);
 
-  // LOCKED position
+  // LOCKED
   doorServo.write(0);
 
-  // Create chars
+  // Custom chars
   lcd.createChar(0, smiley);
   lcd.createChar(1, warning);
   lcd.createChar(2, question);
@@ -106,13 +144,7 @@ void setup() {
   lcd.createChar(4, lockOpen);
   lcd.createChar(5, deniedIcon);
 
-  lcd.clear();
-
-  lcd.setCursor(0, 0);
-  lcd.print("System Ready");
-
-  lcd.setCursor(0, 1);
-  lcd.print("Waiting...");
+  showHome();
 }
 
 // =========================
@@ -120,30 +152,161 @@ void setup() {
 // =========================
 void loop() {
 
+  char key = keypad.getKey();
+
+  // =========================
+  // KEYPAD
+  // =========================
+  if (key) {
+
+    // =========================
+    // REQUEST ACCESS
+    // =========================
+    if (key == 'A') {
+
+      Serial.println("r");
+
+      lcd.clear();
+
+      lcd.setCursor(0,0);
+      lcd.print("REQUEST SENT");
+
+      lcd.setCursor(0,1);
+      lcd.print("PLEASE WAIT");
+    }
+
+    // =========================
+    // PASSWORD MODE
+    // =========================
+    else if (key == 'B') {
+
+      enteringPassword = true;
+
+      enteredPassword = "";
+
+      lcd.clear();
+
+      lcd.setCursor(0,0);
+      lcd.print("PASSWORD:");
+
+      lcd.setCursor(0,1);
+      lcd.print("---");
+    }
+
+    // =========================
+    // PASSWORD INPUT
+    // =========================
+    else if (
+      enteringPassword &&
+      key >= '0' &&
+      key <= '9'
+    ) {
+
+      if (enteredPassword.length() < 3) {
+
+        enteredPassword += key;
+
+        lcd.setCursor(
+          enteredPassword.length()-1,
+          1
+        );
+
+        lcd.print(key);
+      }
+    }
+
+    // =========================
+    // CONFIRM PASSWORD
+    // =========================
+    else if (
+      enteringPassword &&
+      key == 'C'
+    ) {
+
+      // CORRECT PASSWORD
+      if (enteredPassword == correct_pwd) {
+
+        lcd.clear();
+
+        lcd.setCursor(0,0);
+        lcd.write(byte(0));
+        lcd.print(" ACCESS OK");
+
+        lcd.setCursor(0,1);
+        lcd.write(byte(4));
+        lcd.print(" UNLOCKED");
+
+        doorServo.write(90);
+      }
+
+      // WRONG PASSWORD
+      else {
+
+        lcd.clear();
+
+        lcd.setCursor(0,0);
+        lcd.write(byte(5));
+        lcd.print(" WRONG PASS");
+
+        lcd.setCursor(0,1);
+        lcd.write(byte(3));
+        lcd.print(" LOCKED");
+
+        doorServo.write(0);
+      }
+
+      enteringPassword = false;
+
+      delay(3000);
+
+      showHome();
+    }
+
+    // =========================
+    // CLEAR PASSWORD
+    // =========================
+    else if (
+      enteringPassword &&
+      key == '*'
+    ) {
+
+      enteredPassword = "";
+
+      lcd.setCursor(0,1);
+      lcd.print("---");
+    }
+  }
+
+  // =========================
+  // SERIAL COMMANDS
+  // =========================
   if (Serial.available()) {
 
-    String msg = Serial.readStringUntil('\n');
+    String msg =
+      Serial.readStringUntil('\n');
+
     msg.trim();
-
-    Serial.print("Received: ");
-    Serial.println(msg);
-
-    lcd.clear();
 
     // =========================
     // AUTHORIZED
     // =========================
     if (msg == "AUTHORIZED") {
 
-      doorServo.write(90);
+      lcd.clear();
 
-      lcd.setCursor(0, 0);
+      lcd.setCursor(0,0);
       lcd.write(byte(0));
       lcd.print(" AUTHORIZED");
 
-      lcd.setCursor(0, 1);
+      lcd.setCursor(0,1);
       lcd.write(byte(4));
       lcd.print(" UNLOCKED");
+
+      doorServo.write(90);
+
+      delay(3000);
+
+      showHome();
     }
 
     // =========================
@@ -151,15 +314,21 @@ void loop() {
     // =========================
     else if (msg == "THREAT") {
 
-      doorServo.write(0);
+      lcd.clear();
 
-      lcd.setCursor(0, 0);
+      lcd.setCursor(0,0);
       lcd.write(byte(1));
       lcd.print(" THREAT");
 
-      lcd.setCursor(0, 1);
+      lcd.setCursor(0,1);
       lcd.write(byte(3));
       lcd.print(" LOCKED");
+
+      doorServo.write(0);
+
+      delay(3000);
+
+      showHome();
     }
 
     // =========================
@@ -167,14 +336,14 @@ void loop() {
     // =========================
     else if (msg == "WAITING") {
 
-      doorServo.write(0);
+      lcd.clear();
 
-      lcd.setCursor(0, 0);
+      lcd.setCursor(0,0);
       lcd.write(byte(2));
-      lcd.print(" UNKNOWN");
+      lcd.print(" VERIFYING");
 
-      lcd.setCursor(0, 1);
-      lcd.print("WAIT...");
+      lcd.setCursor(0,1);
+      lcd.print("PLEASE WAIT");
     }
 
     // =========================
@@ -182,15 +351,21 @@ void loop() {
     // =========================
     else if (msg == "ALLOW") {
 
-      doorServo.write(90);
+      lcd.clear();
 
-      lcd.setCursor(0, 0);
+      lcd.setCursor(0,0);
       lcd.write(byte(0));
       lcd.print(" ACCESS OK");
 
-      lcd.setCursor(0, 1);
+      lcd.setCursor(0,1);
       lcd.write(byte(4));
       lcd.print(" UNLOCKED");
+
+      doorServo.write(90);
+
+      delay(3000);
+
+      showHome();
     }
 
     // =========================
@@ -198,15 +373,21 @@ void loop() {
     // =========================
     else if (msg == "DENY") {
 
-      doorServo.write(0);
+      lcd.clear();
 
-      lcd.setCursor(0, 0);
+      lcd.setCursor(0,0);
       lcd.write(byte(5));
       lcd.print(" ACCESS DENY");
 
-      lcd.setCursor(0, 1);
+      lcd.setCursor(0,1);
       lcd.write(byte(3));
       lcd.print(" LOCKED");
+
+      doorServo.write(0);
+
+      delay(3000);
+
+      showHome();
     }
 
     // =========================
@@ -216,24 +397,7 @@ void loop() {
 
       doorServo.write(0);
 
-      lcd.setCursor(0, 0);
-      lcd.print("ed
-      ");
-
-      lcd.setCursor(0, 1);
-      lcd.print("Alaikum");
-    }
-
-    // =========================
-    // UNKNOWN CMD
-    // =========================
-    else {
-
-      lcd.setCursor(0, 0);
-      lcd.print("Unknown Cmd");
-
-      lcd.setCursor(0, 1);
-      lcd.print(msg);
+      showHome();
     }
   }
 }
