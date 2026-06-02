@@ -1,206 +1,88 @@
 import discord
 from discord.ext import commands
 from flask import Flask, request
-import threading
 import asyncio
+import threading
 import serial
 import time
+import cv2
+import requests
 
-TOKEN = "YourBotTokenHere"
+TOKEN = "Bot_Token_Here"
 
-LOG_CHANNEL = 1504508733839900855
-ALERT_CHANNEL = 1504508750155747642
-VERIFY_CHANNEL = 1504522183609946193
-
+VERIFY_CHANNEL = 1505909726318170153
 ROLE_PING = "<@&1504722323117178962>"
 
+# =========================
+# ARDUINO
+# =========================
+arduino = serial.Serial(
+    "COM4",
+    9600,
+    timeout=1
+)
+
+time.sleep(2)
+
+# =========================
+# FLASK APP
+# =========================
 app = Flask(__name__)
 
-# ======================
-# ARDUINO
-# ======================
-arduino = None
-
-try:
-    arduino = serial.Serial('COM4', 9600)
-    time.sleep(2)
-    print("Arduino connected")
-
-except Exception as e:
-    print("Arduino NOT connected:", e)
-
-
-# ======================
-# SEND TO ARDUINO
-# ======================
-def send_arduino(cmd):
-
-    if arduino is not None:
-
-        try:
-            arduino.write((cmd + "\n").encode())
-            print("ARDUINO →", cmd)
-
-        except Exception as e:
-            print("Arduino error:", e)
-
-
-# ======================
+# =========================
 # DISCORD BOT
-# ======================
+# =========================
 intents = discord.Intents.default()
-intents.message_content = True
 
 bot = commands.Bot(
     command_prefix="!",
     intents=intents
 )
 
+# =========================
+# SERIAL SENDER
+# =========================
+def send_arduino(cmd):
 
-# ======================
+    arduino.write(
+        (cmd + "\n").encode()
+    )
+
+    print("→ Arduino:", cmd)
+
+# =========================
 # SAFE ASYNC
-# ======================
+# =========================
 def run_async(coro):
 
-    if bot.is_ready():
-        asyncio.run_coroutine_threadsafe(
-            coro,
-            bot.loop
-        )
-
-
-# ======================
-# FLASK ROUTE
-# ======================
-@app.route("/event", methods=["POST"])
-def receive_event():
-
-    data = request.json
-
-    print("RECEIVED:", data)
-
-    try:
-
-        event_type = data.get("type")
-        payload = data.get("data", {})
-
-        message = payload.get("message", "")
-        image = payload.get("image", None)
-
-        # ======================
-        # LOGS
-        # ======================
-        if event_type == "log":
-
-            run_async(send_log(message))
-
-            if "AUTHORIZED" in message:
-                send_arduino("AUTHORIZED")
-
-            elif "THREAT" in message:
-                send_arduino("THREAT")
-
-        # ======================
-        # THREAT ALERT
-        # ======================
-        elif event_type == "alert":
-
-            run_async(
-                send_alert(message, image)
-            )
-
-            send_arduino("THREAT")
-
-        # ======================
-        # UNKNOWN PERSON
-        # ======================
-        elif event_type == "manual_verification":
-
-            send_arduino("WAITING")
-
-            run_async(
-                send_unknown(message, image)
-            )
-
-        # ======================
-        # RESET
-        # ======================
-        elif event_type == "reset":
-
-            send_arduino("Reset")
-
-    except Exception as e:
-        print("Flask handler error:", e)
-
-    return "OK", 200
-
-
-# ======================
-# START FLASK
-# ======================
-def run_flask():
-
-    app.run(
-        host="127.0.0.1",
-        port=5000
+    asyncio.run_coroutine_threadsafe(
+        coro,
+        bot.loop
     )
 
+# =========================
+# CAMERA SNAPSHOT
+# =========================
+def take_photo():
 
-# ======================
-# BOT READY
-# ======================
-@bot.event
-async def on_ready():
+    cam = cv2.VideoCapture(0)
 
-    print("Bot online:", bot.user)
+    ret, frame = cam.read()
 
-    threading.Thread(
-        target=run_flask,
-        daemon=True
-    ).start()
-
-
-# ======================
-# LOG FUNCTION
-# ======================
-async def send_log(text):
-
-    channel = bot.get_channel(LOG_CHANNEL)
-
-    embed = discord.Embed(
-        title="📜 LOG",
-        description=text,
-        color=discord.Color.greyple()
+    path = (
+        f"request_"
+        f"{int(time.time())}.jpg"
     )
 
-    await channel.send(embed=embed)
+    cv2.imwrite(path, frame)
 
+    cam.release()
 
-# ======================
-# ALERT FUNCTION
-# ======================
-async def send_alert(message, image_path):
+    return path
 
-    channel = bot.get_channel(ALERT_CHANNEL)
-
-    embed = discord.Embed(
-        title="🚨 THREAT ALERT",
-        description=message,
-        color=discord.Color.red()
-    )
-
-    file = discord.File(image_path)
-
-    await channel.send(
-        ROLE_PING,
-        embed=embed,
-        file=file
-    )
-
-
-# ======================
-# VERIFICATION BUTTONS
-# ======================
+# =========================
+# BUTTON UI
+# =========================
 class VerifyView(discord.ui.View):
 
     @discord.ui.button(
@@ -237,10 +119,10 @@ class VerifyView(discord.ui.View):
             ephemeral=True
         )
 
-
-# ======================
-# UNKNOWN FUNCTION
-# ======================
+# =========================
+# UNKNOWN PERSON
+# WITH BUTTONS
+# =========================
 async def send_unknown(
     message,
     image_path
@@ -251,7 +133,7 @@ async def send_unknown(
     )
 
     embed = discord.Embed(
-        title="🤖 UNKNOWN PERSON",
+        title="UNKNOWN PERSON",
         description=message,
         color=discord.Color.orange()
     )
@@ -265,8 +147,153 @@ async def send_unknown(
         view=VerifyView()
     )
 
+# =========================
+# THREAT ALERT
+# NO BUTTONS
+# =========================
+async def send_threat(
+    message,
+    image_path
+):
 
-# ======================
-# RUN BOT
-# ======================
+    channel = bot.get_channel(
+        VERIFY_CHANNEL
+    )
+
+    embed = discord.Embed(
+        title="⚠ THREAT DETECTED",
+        description=message,
+        color=discord.Color.red()
+    )
+
+    file = discord.File(image_path)
+
+    await channel.send(
+        ROLE_PING,
+        embed=embed,
+        file=file
+    )
+
+# =========================
+# FLASK ROUTE
+# =========================
+@app.route(
+    "/event",
+    methods=["POST"]
+)
+def receive_event():
+
+    data = request.json
+
+    event_type = data["type"]
+
+    payload = data["data"]
+
+    # =========================
+    # AUTHORIZED
+    # =========================
+    if event_type == "AUTHORIZED":
+
+        send_arduino("AUTHORIZED")
+
+    # =========================
+    # THREAT
+    # NO BUTTONS
+    # =========================
+    elif event_type == "THREAT":
+
+        send_arduino("THREAT")
+
+        run_async(
+            send_threat(
+                payload["message"],
+                payload["image"]
+            )
+        )
+
+    # =========================
+    # UNKNOWN
+    # WITH BUTTONS
+    # =========================
+    elif event_type == "UNKNOWN":
+
+        send_arduino("WAITING")
+
+        run_async(
+            send_unknown(
+                payload["message"],
+                payload["image"]
+            )
+        )
+
+    # =========================
+    # RESET
+    # =========================
+    elif event_type == "RESET":
+
+        send_arduino("Reset")
+
+    return "OK"
+
+# =========================
+# SERIAL LISTENER
+# =========================
+def serial_listener():
+
+    while True:
+
+        if arduino.in_waiting:
+
+            msg = (
+                arduino.readline()
+                .decode()
+                .strip()
+            )
+
+            print("SERIAL:", msg)
+
+            # =========================
+            # MANUAL REQUEST
+            # =========================
+            if msg == "A_PRESSED":
+
+                path = take_photo()
+
+                requests.post(
+                    "http://127.0.0.1:5000/event",
+                    json={
+                        "type": "UNKNOWN",
+                        "data": {
+                            "message":
+                            "Manual Request",
+                            "image": path
+                        }
+                    }
+                )
+
+# =========================
+# BOT READY
+# =========================
+@bot.event
+async def on_ready():
+
+    print("BOT READY")
+
+    threading.Thread(
+        target=serial_listener,
+        daemon=True
+    ).start()
+
+    threading.Thread(
+        target=lambda:
+        app.run(
+            host="127.0.0.1",
+            port=5000
+        ),
+        daemon=True
+    ).start()
+
+# =========================
+# START BOT
+# =========================
 bot.run(TOKEN)
